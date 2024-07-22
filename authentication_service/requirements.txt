@@ -1,0 +1,6 @@
+Flask==2.1.1
+Flask-SQLAlchemy==2.5.1
+Werkzeug==2.3.7
+SQLAlchemy==1.4.23
+pymysql==1.0.2
+cryptography

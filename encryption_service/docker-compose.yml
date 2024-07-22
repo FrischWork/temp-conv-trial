@@ -1,0 +1,27 @@
+services:
+  encryption-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: convenienttrial
+      MYSQL_TCP_PORT: 3307
+    volumes:
+      - encryption_data:/var/lib/mysql
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "3307:3307"
+
+  encryption-service:
+    build: .
+    environment:
+      MYSQL_SERVER: db
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: convenienttrial
+    depends_on:
+      - encryption-db
+    ports:
+      - "8001:8000"
+
+volumes:
+  encryption_data:
