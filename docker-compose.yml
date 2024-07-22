@@ -90,7 +90,10 @@ services:
       - "8003:8000"
 
   react-frontend:
-    build: ./patient_frontend/
+    build:
+      context: ./patient_frontend/
+      args:
+        - REACT_APP_BFF_URL=http://localhost:8003
     ports:
       - "3000:80"
     depends_on:
