@@ -11,15 +11,19 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 5s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 55
 
   questionnaire-service:
     build: ./questionnaire_service/
     depends_on:
-      - questionnaire-db
+      questionnaire-db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
 
@@ -35,15 +39,17 @@ services:
     ports:
       - "3307:3307"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 5s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 55
 
   encryption-service:
     build: ./encryption_service
     depends_on:
-      - encryption-db
+      encryption-db:
+        condition: service_healthy
     ports:
       - "8001:8000"
 
@@ -59,10 +65,11 @@ services:
     ports:
       - "3308:3308"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 5s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 55
 
   authentication-service:
     build: ./authentication_service/
@@ -72,7 +79,8 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: convenienttrial
     depends_on:
-      - authentication-db
+      authentication-db:
+        condition: service_healthy
     ports:
       - "8002:8000"
 
@@ -83,9 +91,14 @@ services:
       ENCRYPTION_SERVICE_URL: "http://encryption-service:8000"
       QUESTIONNAIRE_SERVICE_URL: "http://questionnaire-service:8000"
     depends_on:
-      - authentication-service
-      - encryption-service
-      - questionnaire-service
+      authentication-service:
+        condition: service_started
+      encryption-service:
+        condition: service_started
+      questionnaire-service:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
     ports:
       - "8003:8000"
 
@@ -98,6 +111,35 @@ services:
       - "3000:80"
     depends_on:
       - patient-bff
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "test_topic:1:1,messages_requests:1:1,messages_responses:1:1"
+
+  kafka-init:
+    build:
+      context: ./init_kafka/.
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
 volumes:
   questionnaire_data:

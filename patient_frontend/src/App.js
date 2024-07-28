@@ -9,15 +9,23 @@ function App() {
 
   const apiUrl = process.env.REACT_APP_BFF_URL;
 
+
+  const verifyAndSetMessages = (data) => {
+    console.log(data);
+    if (data.messages) {
+      setMessages(data.messages);
+    }
+  };
+
   useEffect(() => {
     if (forceReload) {
       fetch(`${apiUrl}/messages`)
         .then(response => response.json())
-        .then(data => setMessages(data))
+        .then(data => verifyAndSetMessages(data))
         .then(setForceReload(false))
         .catch(error => console.error('Error fetching messages:', error));
     }
-  }, [forceReload]);
+  }, [forceReload, apiUrl]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
